@@ -44,14 +44,34 @@ std::string AliCloudReport::networkRequest(
 
     httplib::SSLClient cli("alidns.aliyuncs.com", 443);
     const auto res = cli.Get(url.str());
+
+    // ERROR
+    // {
+    //"RequestId" : "AF63231B-E72A-5AA9-99B0-E0EFE76D4FE5",
+    //"Message" : "Specified access key is not found.",
+    //"Recommend" : "https://api.aliyun.com/troubleshoot?q=InvalidAccessKeyId.NotFound&product=Alidns&requestId=AF63231B-E72A-5AA9-99B0-E0EFE76D4FE5",
+    //"HostId" : "alidns.aliyuncs.com",
+    //"Code" : "InvalidAccessKeyId.NotFound"
+    //}
+    auto b = res->body;
     if (res && res->status == 200)
     {
-        const auto b = res->body;
         return b;
     }
-    std::cerr << "HTTP request failed: " << std::endl;
+    try
+    {
+        const auto jsonObj = nlohmann::json::parse(b);
+        std::cerr << "HTTP request failed: " << jsonObj["Message"].get<std::string>() << std::endl;
+    } catch (const std::exception &e)
+    {
+        std::cout << "HTTP request failed: " << e.what() << std::endl;
+    }
     return "";
 }
+
+constexpr int32_t GetRecordDomainIpCodeERROR = 0x01;
+constexpr int32_t GetRecordDomainIpCodeAddDomain = 0x02;
+constexpr int32_t GetRecordDomainIpCodeUpdateDomain = 0x03;
 
 /**
  *
@@ -99,14 +119,15 @@ nlohmann::json AliCloudReport::getRecordDomainIp(
         const auto jsonObj = nlohmann::json::parse(resp);
         if (jsonObj["TotalCount"].get<int>() <= 0)
         {
-            return {};
+            return {{"code", GetRecordDomainIpCodeAddDomain}};
         }
-        const auto domainObj = jsonObj["DomainRecords"]["Record"][0];
+        auto domainObj = jsonObj["DomainRecords"]["Record"][0];
+        domainObj["code"] = GetRecordDomainIpCodeUpdateDomain;
         return domainObj;
     } catch (const std::exception &e)
     {
         std::cerr << "JSON parsing failed when querying SubDomain: " << e.what() << std::endl;
-        return {};
+        return {{"code", GetRecordDomainIpCodeERROR}};
     }
 }
 
@@ -139,7 +160,7 @@ void AliCloudReport::addOrUpdateDomain(const std::string &accessKey, const std::
 {
     std::cout << "Worker Add or Update SubDomain: " << subDomain << "." << domain << "..." << std::endl;
     const auto findResult = this->getRecordDomainIp(accessKey, accessKeySecret, subDomain, domain);
-    if (findResult.empty())
+    if (findResult["code"] == GetRecordDomainIpCodeAddDomain)
     {
         std::cerr << "The cloud SubDomain may be empty, add this SubDomain: " << subDomain << "." << domain <<
                 std::endl;
@@ -152,7 +173,7 @@ void AliCloudReport::addOrUpdateDomain(const std::string &accessKey, const std::
         {
             std::cout << "Failed to add SubDomain: " << subDomain << "." << domain << std::endl;
         }
-    } else
+    } else if (findResult["code"] == GetRecordDomainIpCodeUpdateDomain)
     {
         const auto cloudIp = findResult["Value"].get<std::string>();
         const auto recordId = findResult["RecordId"].get<std::string>();
@@ -357,7 +378,7 @@ std::string AliCloudReport::hmacSha1(const std::string &key, const std::string &
     return base64Encode(digest, digest_len);
 }
 
-std::string AliCloudReport::getUtcTime() const
+std::string AliCloudReport::getUtcTime()
 {
     const auto now = std::chrono::system_clock::now();
     const auto time_t = std::chrono::system_clock::to_time_t(now);

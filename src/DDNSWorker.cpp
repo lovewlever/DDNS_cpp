@@ -16,19 +16,17 @@
 #include "SSHOpenWRTGetIp.h"
 
 DDNSWorker::DDNSWorker()
-{
-}
+= default;
 
 DDNSWorker::~DDNSWorker()
-{
-}
+= default;
 
 int32_t DDNSWorker::readConfig()
 {
     return YamlConfig::getInstance().loadConfig();
 }
 
-[[noreturn]] void DDNSWorker::run()
+[[noreturn]] void DDNSWorker::run() const
 {
     const auto &yamlConfig = YamlConfig::getInstance();
     const auto &ipvs = yamlConfig.getIpvConfigs();
@@ -45,16 +43,17 @@ int32_t DDNSWorker::readConfig()
         {
             if (ipv.Enable == YamlConfig::IpvConfEnableTrue)
             {
-                std::cout << "====Starting DDNS worker...=========================================" << std::endl;
+                std::cout << "==== Starting DDNS worker... =========================================" << std::endl;
                 this->distributionType(ipv);
-                std::cout << "====Ending DDNS worker...=========================================" << std::endl;
+                std::cout << "==== Ending DDNS worker...   =========================================" << std::endl;
             } else
             {
                 std::cerr << ipv.Subdomain << "." << ipv.Domain << " is disabled;" << std::endl;
             }
         }
-
-        std::cout << "Waiting delayTime: " << (delayTime * 0.01666666 * 0.001) << "..." << std::endl;
+        std::cout << "==== " << AliCloudReport::getUtcTime() << " ====" << std::endl;
+        std::cout << std::endl;
+        std::cout << "Waiting delayTime: " << (delayTime * 0.01666666 * 0.001) << "min..." << std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds(delayTime));
     }
 }

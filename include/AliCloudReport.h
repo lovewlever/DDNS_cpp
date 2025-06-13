@@ -33,6 +33,8 @@ public:
                               const std::string &type,
                               const std::string &ttl) const;
 
+    static std::string getUtcTime();
+
 private:
     std::string generateSignature(const std::map<std::string, std::string> &params,
                                   const std::string &accessKeySecret) const;
@@ -41,7 +43,6 @@ private:
 
     std::string hmacSha1(const std::string &key, const std::string &data) const;
 
-    std::string getUtcTime() const;
 
     std::string percentEncode(const std::string &value) const;
 

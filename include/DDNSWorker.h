@@ -15,7 +15,7 @@ public:
 
     int32_t readConfig();
 
-    void run();
+    void run() const;
 
 private:
     void distributionType(const YamlConfig::IpvConfig & ipvConf) const;
