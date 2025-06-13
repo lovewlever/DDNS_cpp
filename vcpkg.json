@@ -1,0 +1,14 @@
+{
+  "dependencies": [
+
+  ],
+  "builtin-baseline": "189fcdcb953b871d206ffada6db047496fc3f496",
+  "overrides": [
+    {
+      "name": "ffi",
+      "version": "3.4.4"
+    }
+  ],
+  "version": "1.0",
+  "name": "ddns-cpp"
+}

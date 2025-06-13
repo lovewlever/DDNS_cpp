@@ -1,0 +1,367 @@
+//
+// Created by catog on 2025/6/12.
+//
+
+#include "AliCloudReport.h"
+#define  CPPHTTPLIB_OPENSSL_SUPPORT
+#include <httplib.h>
+#include <openssl/hmac.h>
+#include <openssl/bio.h>
+#include <openssl/buffer.h>
+
+#include "nlohmann/json.hpp"
+
+std::string AliCloudReport::networkRequest(
+    const std::string &accessKeySecret,
+    const std::string &action,
+    std::map<std::string, std::string> &params) const
+{
+    const std::string timestamp = this->getUtcTime();
+    std::map<std::string, std::string> paramsVec{
+        {"SignatureMethod", "HMAC-SHA1"},
+        {"SignatureNonce", timestamp},
+        {"SignatureVersion", "1.0"},
+        {"Timestamp", timestamp},
+        {"Action", action},
+        {"Format", "json"},
+        {"Version", "2015-01-09"},
+    };
+    for (const auto &[fst, snd]: params)
+    {
+        paramsVec[fst] = snd;
+    }
+
+    std::string signature = generateSignature(paramsVec, accessKeySecret);
+
+    paramsVec["Signature"] = signature;
+    std::ostringstream url;
+    url << "/?";
+    for (auto it = paramsVec.begin(); it != paramsVec.end(); ++it)
+    {
+        if (it != paramsVec.begin()) url << "&";
+        url << percentEncode(it->first) << "=" << percentEncode(it->second);
+    }
+
+    httplib::SSLClient cli("alidns.aliyuncs.com", 443);
+    const auto res = cli.Get(url.str());
+    if (res && res->status == 200)
+    {
+        const auto b = res->body;
+        return b;
+    }
+    std::cerr << "HTTP request failed: " << std::endl;
+    return "";
+}
+
+/**
+ *
+ * @param accessKey
+ * @param accessKeySecret
+ * @param subDomain
+ * @param domain
+ * @return
+ *
+* {
+  "TotalCount" : 1,
+  "PageSize" : 20,
+  "RequestId" : "9953C05B-819D-5747-B1B4-531F7580C2E0",
+  "DomainRecords" : {
+    "Record" : [ {
+      "Status" : "ENABLE",
+      "Line" : "default",
+      "RR" : "ddns6winserver",
+      "Locked" : false,
+      "Type" : "AAAA",
+      "DomainName" : "dfordog.cn",
+      "Value" : "2408:8215:5b20:9860:750b:2f3e:f405:665c",
+      "RecordId" : "1932603865284210688",
+      "TTL" : 600,
+      "Weight" : 1
+    } ]
+  },
+  "PageNumber" : 1
+}
+ */
+nlohmann::json AliCloudReport::getRecordDomainIp(
+    const std::string &accessKey,
+    const std::string &accessKeySecret,
+    const std::string &subDomain,
+    const std::string &domain) const
+{
+    std::map<std::string, std::string> paramsVec{
+        {"SubDomain", subDomain + "." + domain},
+        {"AccessKeyId", accessKey},
+    };
+
+    const auto resp = this->networkRequest(accessKeySecret, "DescribeSubDomainRecords", paramsVec);
+    try
+    {
+        const auto jsonObj = nlohmann::json::parse(resp);
+        if (jsonObj["TotalCount"].get<int>() <= 0)
+        {
+            return {};
+        }
+        const auto domainObj = jsonObj["DomainRecords"]["Record"][0];
+        return domainObj;
+    } catch (const std::exception &e)
+    {
+        std::cerr << "JSON parsing failed when querying SubDomain: " << e.what() << std::endl;
+        return {};
+    }
+}
+
+/**
+ *
+ * @param accessKey
+ * @param accessKeySecret
+ * @param subDomain
+ * @param domain
+ * @param ip
+ * @param type
+ * @param ttl
+ *
+* {
+      "Status" : "ENABLE",
+      "Line" : "default",
+      "RR" : "ddns6winserver",
+      "Locked" : false,
+      "Type" : "AAAA",
+      "DomainName" : "dfordog.cn",
+      "Value" : "2408:8215:5b20:9860:750b:2f3e:f405:665c",
+      "RecordId" : "1932603865284210688",
+      "TTL" : 600,
+      "Weight" : 1
+    }
+ */
+void AliCloudReport::addOrUpdateDomain(const std::string &accessKey, const std::string &accessKeySecret,
+                                       const std::string &subDomain, const std::string &domain,
+                                       const std::string &ip, const std::string &type, const std::string &ttl) const
+{
+    std::cout << "Worker Add or Update SubDomain: " << subDomain << "." << domain << "..." << std::endl;
+    const auto findResult = this->getRecordDomainIp(accessKey, accessKeySecret, subDomain, domain);
+    if (findResult.empty())
+    {
+        std::cerr << "The cloud SubDomain may be empty, add this SubDomain: " << subDomain << "." << domain <<
+                std::endl;
+        const auto i = this->addDomain(accessKey, accessKeySecret, subDomain, domain, ip, type, ttl);
+        if (i == 0)
+        {
+            std::cout << "Add " << subDomain << "." << domain << " successfully added" << std::endl;
+            std::cout << "Enjoy~ " << std::endl;
+        } else
+        {
+            std::cout << "Failed to add SubDomain: " << subDomain << "." << domain << std::endl;
+        }
+    } else
+    {
+        const auto cloudIp = findResult["Value"].get<std::string>();
+        const auto recordId = findResult["RecordId"].get<std::string>();
+        if (cloudIp == ip)
+        {
+            std::cout << "The IP on the cloud is consistent with the IP to be updated, no update is required" <<
+                    std::endl;
+            return;
+        }
+        std::cout << "Update " << cloudIp << " to " << ip << " ..." << std::endl;
+        const auto i = this->updateDomain(accessKey, accessKeySecret, subDomain, domain, ip, type, ttl, recordId);
+        if (i == 0)
+        {
+            std::cout << "Update " << subDomain << "." << domain << " successfully" << std::endl;
+            std::cout << "Enjoy~ " << std::endl;
+        } else
+        {
+            std::cout << "Failed to update SubDomain: " << subDomain << "." << domain << std::endl;
+        }
+    }
+}
+
+/**
+ *
+ * @param accessKey
+ * @param accessKeySecret
+ * @param subDomain
+ * @param domain
+ * @param ip
+ * @param type
+ * @param ttl
+ * @return
+ * {
+  "RequestId" : "99486677-1967-5F2D-8F4C-F07BE4C69229",
+  "RecordId" : "1933362074172787712"
+}
+ */
+int32_t AliCloudReport::addDomain(
+    const std::string &accessKey,
+    const std::string &accessKeySecret,
+    const std::string &subDomain,
+    const std::string &domain,
+    const std::string &ip,
+    const std::string &type,
+    const std::string &ttl) const
+{
+    std::map<std::string, std::string> paramsVec{
+        {"RR", subDomain},
+        {"TTL", ttl},
+        {"Type", type},
+        {"Value", ip},
+        {"AccessKeyId", accessKey},
+        {"DomainName", domain},
+    };
+    const auto resp = this->networkRequest(accessKeySecret, "AddDomainRecord", paramsVec);
+    try
+    {
+        const auto jsonObj = nlohmann::json::parse(resp);
+        if (!jsonObj.empty())
+        {
+            return 0;
+        }
+        std::cerr <<
+                "The cloud may not return data when adding SubDomain. Please check whether the addition is successful on the cloud."
+                << std::endl;
+        return -1;
+    } catch (const std::exception &e)
+    {
+        std::cerr << "Add SubDomain failed: " << e.what() << std::endl;
+        return -1;
+    }
+}
+
+/**
+ *
+ * @param accessKey
+ * @param accessKeySecret
+ * @param subDomain
+ * @param domain
+ * @param ip
+ * @param type
+ * @param ttl
+ * @param recordId
+ * @return
+ *
+* {
+  "RequestId" : "99486677-1967-5F2D-8F4C-F07BE4C69229",
+  "RecordId" : "1933362074172787712"
+}
+ */
+int32_t AliCloudReport::updateDomain(const std::string &accessKey,
+                                     const std::string &accessKeySecret,
+                                     const std::string &subDomain,
+                                     const std::string &domain,
+                                     const std::string &ip,
+                                     const std::string &type,
+                                     const std::string &ttl,
+                                     const std::string &recordId) const
+{
+    std::map<std::string, std::string> paramsVec{
+        {"RR", subDomain},
+        {"TTL", ttl},
+        {"Type", type},
+        {"Value", ip},
+        {"AccessKeyId", accessKey},
+        {"DomainName", domain},
+        {"RecordId", recordId},
+    };
+    const auto resp = this->networkRequest(accessKeySecret, "UpdateDomainRecord", paramsVec);
+    try
+    {
+        const auto jsonObj = nlohmann::json::parse(resp);
+        if (!jsonObj.empty())
+        {
+            return 0;
+        }
+        std::cerr <<
+                "When updating SubDomain, the cloud may not return data. Please check whether the update is successful in the cloud."
+                << std::endl;
+        return -1;
+    } catch (const std::exception &e)
+    {
+        std::cerr << "Update SubDomain failed: " << e.what() << std::endl;
+        return -1;
+    }
+}
+
+
+std::string AliCloudReport::percentEncode(const std::string &value) const
+{
+    std::ostringstream encoded;
+    for (auto c: value)
+    {
+        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~')
+        {
+            encoded << c;
+        } else
+        {
+            encoded << '%' << std::uppercase << std::hex << (int) (unsigned char) c;
+        }
+    }
+    return encoded.str();
+}
+
+std::string AliCloudReport::generateSignature(const std::map<std::string, std::string> &params,
+                                              const std::string &accessKeySecret) const
+{
+    // 1. 按照参数名称的字典顺序排序
+    std::map<std::string, std::string> sortedParams = params;
+
+    // 2. Canonicalized Query String
+    std::ostringstream queryStream;
+    for (auto it = sortedParams.begin(); it != sortedParams.end(); ++it)
+    {
+        if (it != sortedParams.begin()) queryStream << "&";
+        queryStream << percentEncode(it->first) << "=" << percentEncode(it->second);
+    }
+
+    std::string canonicalizedQueryString = queryStream.str();
+
+    // 3. StringToSign
+    std::string stringToSign = "GET&%2F&" + percentEncode(canonicalizedQueryString);
+
+    // 4. 生成签名
+    std::string key = accessKeySecret + "&";
+    std::string signature = hmacSha1(key, stringToSign);
+
+    return signature;
+}
+
+std::string AliCloudReport::base64Encode(const unsigned char *input, int length) const
+{
+    BIO *bio, *b64;
+    BUF_MEM *bufferPtr;
+
+    b64 = BIO_new(BIO_f_base64());
+    bio = BIO_new(BIO_s_mem());
+    bio = BIO_push(b64, bio);
+
+    BIO_set_flags(bio, BIO_FLAGS_BASE64_NO_NL);
+    BIO_write(bio, input, length);
+    BIO_flush(bio);
+    BIO_get_mem_ptr(bio, &bufferPtr);
+
+    std::string result(bufferPtr->data, bufferPtr->length);
+    BIO_free_all(bio);
+
+    return result;
+}
+
+std::string AliCloudReport::hmacSha1(const std::string &key, const std::string &data) const
+{
+    unsigned char digest[EVP_MAX_MD_SIZE];
+    unsigned int digest_len;
+
+    HMAC_CTX *ctx = HMAC_CTX_new();
+    HMAC_Init_ex(ctx, key.c_str(), key.length(), EVP_sha1(), NULL);
+    HMAC_Update(ctx, (unsigned char *) data.c_str(), data.length());
+    HMAC_Final(ctx, digest, &digest_len);
+    HMAC_CTX_free(ctx);
+
+    return base64Encode(digest, digest_len);
+}
+
+std::string AliCloudReport::getUtcTime() const
+{
+    const auto now = std::chrono::system_clock::now();
+    const auto time_t = std::chrono::system_clock::to_time_t(now);
+    std::stringstream ss;
+    ss << std::put_time(std::gmtime(&time_t), "%Y-%m-%dT%H:%M:%SZ");
+    return ss.str();
+}
