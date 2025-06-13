@@ -16,10 +16,10 @@ std::string AliCloudReport::networkRequest(
     const std::string &action,
     std::map<std::string, std::string> &params) const
 {
-    const std::string timestamp = this->getUtcTime();
+    const std::string timestamp = getUtcTime();
     std::map<std::string, std::string> paramsVec{
         {"SignatureMethod", "HMAC-SHA1"},
-        {"SignatureNonce", timestamp},
+        {"SignatureNonce", std::to_string(getTimestamp())},
         {"SignatureVersion", "1.0"},
         {"Timestamp", timestamp},
         {"Action", action},
@@ -385,4 +385,11 @@ std::string AliCloudReport::getUtcTime()
     std::stringstream ss;
     ss << std::put_time(std::gmtime(&time_t), "%Y-%m-%dT%H:%M:%SZ");
     return ss.str();
+}
+
+int64_t AliCloudReport::getTimestamp() const
+{
+    const auto now = std::chrono::system_clock::now();
+    const auto time_t = std::chrono::system_clock::to_time_t(now);
+    return time_t;
 }

@@ -178,6 +178,32 @@ void DDNSWorker::execIpv4SSHOpenWRT(const YamlConfig::IpvConfig &ipvConf) const
 
 void DDNSWorker::execIpv6SSHOpenWRT(const YamlConfig::IpvConfig &ipvConf) const
 {
+    std::cout << "Worker Ipv6SSHOpenWRT: ..." << std::endl;
+    const auto &sshConfig = ipvConf.SSHConfig;
+    if (sshConfig.host.empty() || sshConfig.user.empty() || sshConfig.password.empty() ||
+        sshConfig.InterfaceName.empty())
+    {
+        std::cerr << "No IPv6 SSHOpenWRT configuration" << std::endl;
+        return;
+    }
+    SSHOpenWRTGetIp sshOpenWRTGetIp{sshConfig.host, sshConfig.user, sshConfig.password, sshConfig.port, sshConfig.InterfaceName};
+    const auto &[code, msg, ipv4, ipv6] = sshOpenWRTGetIp.execRemoteCommand();
+    if (code == 0 || code == 1)
+    {
+        if (ipvConf.Cloud == YamlConfig::IpvConfCloudAliCloud)
+        {
+            const auto [AccessKeyId, AccessKeySecret] = YamlConfig::getInstance().getAliKeyConfig();
+            const AliCloudReport ar{};
+            ar.addOrUpdateDomain(AccessKeyId, AccessKeySecret, ipvConf.Subdomain,
+                                 ipvConf.Domain, ipv6, "AAAA", ipvConf.TTL);
+        } else
+        {
+            std::cerr << "Currently only supports Ali Cloud: [ALICLOUD]" << std::endl;
+        }
+    } else
+    {
+        std::cerr << "Failed to get IPv6 SSHOpenWRT: " << msg << std::endl;
+    }
 }
 
 void DDNSWorker::execIpv6Network(const YamlConfig::IpvConfig &ipvConf) const

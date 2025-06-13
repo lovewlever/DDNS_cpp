@@ -35,6 +35,8 @@ public:
 
     static std::string getUtcTime();
 
+    int64_t getTimestamp() const;
+
 private:
     std::string generateSignature(const std::map<std::string, std::string> &params,
                                   const std::string &accessKeySecret) const;
