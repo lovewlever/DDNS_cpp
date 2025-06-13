@@ -1,0 +1,58 @@
+AliKeyConfig:
+  "AccessKeyId": "LTAI5tBpgWThotteSP7QgPtV"
+  "AccessKeySecret": "dhgBHc71WyqHHKr2Q8ftRxUOKkm7JL"
+
+#分钟
+DelayTime: 10
+# Type: IPV4,IPV6
+# Subdomain:
+# Domain:
+# Provider: SSH_OPENWRT，NETWORK，MACHINE
+#   SSH_OPENWRT必须配置SSHConfig
+#   NETWORK必须配置NetworkConfig
+#   MACHINE 仅支持windows的ipv6
+# Cloud: ALICLOUD
+# TTL: 600
+# Enable: TRUE, FALSE
+# NetworkConfig
+#   [...]
+# SSHConfig:
+#   Host: ddns.dfordog.cn
+#   Port: 2223
+#   User: root
+#   Password: openwrt
+IpvConfig:
+  #CA_IPV6
+  - Type: IPV6
+    Domain: dfordog.cn
+    Subdomain: ddns6ca
+    Cloud: ALICLOUD
+    Enable: TRUE
+    TTL: 600
+    Provider: MACHINE
+    NetworkConfig:
+      - "https://ipv6.ddnspod.com/"
+    SSHConfig:
+      Host: ddns.dfordog.cn
+      Port: 2223
+      User: root
+      Password: openwrt
+      InterfaceName: pppoe-wan
+  #CA_IPV4
+  - Type: IPV4
+    Domain: dfordog.cn
+    Subdomain: ddns4ca
+    Cloud: ALICLOUD
+    Enable: TRUE
+    TTL: 600
+    Provider: NETWORK
+    NetworkConfig:
+      - "https://jsonip.com"
+      - "https://ip.xrdp.cc"
+    SSHConfig:
+      Host: ddns.dfordog.cn
+      Port: 2223
+      User: root
+      Password: openwrt
+      InterfaceName: pppoe-wan
+

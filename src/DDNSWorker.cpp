@@ -28,6 +28,7 @@ int32_t DDNSWorker::readConfig()
 
 [[noreturn]] void DDNSWorker::run() const
 {
+    int32_t count{0};
     const auto &yamlConfig = YamlConfig::getInstance();
     const auto &ipvs = yamlConfig.getIpvConfigs();
     const auto &delayTime = yamlConfig.getDelayTimestamp();
@@ -39,6 +40,7 @@ int32_t DDNSWorker::readConfig()
     std::cout << "DDNSWorker::run()------------------" << std::endl;
     while (true)
     {
+        count ++;
         for (const auto &ipv: ipvs)
         {
             if (ipv.Enable == YamlConfig::IpvConfEnableTrue)
@@ -51,10 +53,14 @@ int32_t DDNSWorker::readConfig()
                 std::cerr << ipv.Subdomain << "." << ipv.Domain << " is disabled;" << std::endl;
             }
         }
-        std::cout << "==== " << AliCloudReport::getUtcTime() << " ====" << std::endl;
+        std::cout << "==== " << AliCloudReport::getUtcPlusEightTime() << " ====" << std::endl;
+        std::cout << "==== " << count << " times run" << std::endl;
         std::cout << std::endl;
         std::cout << "Waiting delayTime: " << (delayTime * 0.01666666 * 0.001) << "min..." << std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds(delayTime));
+
+        // clear console
+        std::cout << "\033[2J\033[H";
     }
 }
 

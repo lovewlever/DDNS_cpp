@@ -35,6 +35,8 @@ public:
 
     static std::string getUtcTime();
 
+    static std::string getUtcPlusEightTime();
+
     int64_t getTimestamp() const;
 
 private:

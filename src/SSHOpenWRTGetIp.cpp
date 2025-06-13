@@ -69,7 +69,7 @@ SSHOpenWRTGetIp::getRemoteIpv46()
             addr = &(ipv6->sin6_addr);
         }
         inet_ntop(p->ai_family, addr, ipstr, sizeof(ipstr));
-        std::cout << "IP: " << ipstr << std::endl;
+        std::cout << "SSH Host: " << host << "; IP: " << ipstr << std::endl;
     }
 
     if (addr == nullptr)
