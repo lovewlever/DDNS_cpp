@@ -10,6 +10,8 @@
 #include <regex>
 #include <string>
 
+#include "GLog.h"
+
 std::unique_ptr<httplib::SSLClient> NetworkRequest::getClient(const std::string &url) const
 {
     auto domain = url;
@@ -28,7 +30,7 @@ std::unique_ptr<httplib::SSLClient> NetworkRequest::getClient(const std::string 
     return cli;
 }
 
-NetworkRequest & NetworkRequest::getInstance()
+NetworkRequest &NetworkRequest::getInstance()
 {
     static NetworkRequest instance;
     return instance;
@@ -36,7 +38,7 @@ NetworkRequest & NetworkRequest::getInstance()
 
 std::string NetworkRequest::getNetworkIpv4(const std::string &url) const
 {
-    std::cout << "Request Network Find Ipv4 Work..." << std::endl;
+    GLog::log() << "Request Network Find Ipv4 Work..." << std::endl;
     const auto cli = getClient(url);
     if (const auto resp = cli->Get("/"); resp.error() == httplib::Error::Success)
     {
@@ -46,41 +48,49 @@ std::string NetworkRequest::getNetworkIpv4(const std::string &url) const
         const auto b = std::regex_search(body, finalIpv4, ipv4Regex);
         if (b)
         {
-            printf("Request Network Find Ipv4 Url: %s; \n - Resp: %s;\n - Ipv4: %s;\n", url.c_str(), body.c_str(), finalIpv4[0].str().c_str());
+            GLog::log() << "Request Network Find Ipv4 Url: " << url << "; \n - Resp: " << body << ";\n - Ipv4: " <<
+                    finalIpv4[0].str() << ";\n" << std::endl;
             return finalIpv4[0].str();
         }
-        std::cout << "No IPv4 address was matched in the request result" << std::endl;
+        GLog::log() << "No IPv4 address was matched in the request result" << std::endl;
         return "";
     } else
     {
-        std::cerr << "Request Network Find Ipv4 Url: " << url << "; Resp: " << resp.error() << std::endl;
+        GLog::log(GLog::LogLevelError) << "Request Network Find Ipv4 Url: " << url << "; Resp: " << resp.error() <<
+                std::endl;
     }
     return "";
 }
 
 std::string NetworkRequest::getNetworkIpv6(const std::string &url) const
 {
-    std::cout << "Request Network Find Ipv6 Work..." << std::endl;
+    GLog::log() << "Request Network Find Ipv6 Work..." << std::endl;
     const auto cli = getClient(url);
     if (const auto resp = cli->Get("/"); resp.error() == httplib::Error::Success)
     {
         const std::string body = resp->body;
         // Only verify whether ipv6 is legal
-        const std::regex ipv6Regex(R"(^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(:[0-9a-fA-F]{1,4}){1,6}|:((:[0-9a-fA-F]{1,4}){1,7}|:))$)", std::regex::ECMAScript);
+        const std::regex ipv6Regex(
+            R"(^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:(:[0-9a-fA-F]{1,4}){1,6}|:((:[0-9a-fA-F]{1,4}){1,7}|:))$)",
+            std::regex::ECMAScript);
         // Extract ipv6 from string
-        const std::regex ipv6RegexTq(R"((([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,6}:([0-9a-fA-F]{1,4}:){0,5}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}:([0-9a-fA-F]{1,4}:){0,4}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,4}:([0-9a-fA-F]{1,4}:){0,3}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,3}:([0-9a-fA-F]{1,4}:){0,2}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,2}:([0-9a-fA-F]{1,4}:){0,1}[0-9a-fA-F]{1,4}|[0-9a-fA-F]{1,4}::([0-9a-fA-F]{1,4}:){0,5}[0-9a-fA-F]{1,4}|::([0-9a-fA-F]{1,4}:){0,6}[0-9a-fA-F]{1,4}|::))", std::regex::ECMAScript);
+        const std::regex ipv6RegexTq(
+            R"((([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,6}:([0-9a-fA-F]{1,4}:){0,5}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}:([0-9a-fA-F]{1,4}:){0,4}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,4}:([0-9a-fA-F]{1,4}:){0,3}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,3}:([0-9a-fA-F]{1,4}:){0,2}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,2}:([0-9a-fA-F]{1,4}:){0,1}[0-9a-fA-F]{1,4}|[0-9a-fA-F]{1,4}::([0-9a-fA-F]{1,4}:){0,5}[0-9a-fA-F]{1,4}|::([0-9a-fA-F]{1,4}:){0,6}[0-9a-fA-F]{1,4}|::))",
+            std::regex::ECMAScript);
         std::smatch finalIpv6{};
         const auto b = std::regex_search(body, finalIpv6, ipv6RegexTq);
         if (b)
         {
-            printf("Request Network Find Ipv6 Url: %s; \n - Resp: %s;\n - Ipv6: %s; \n", url.c_str(), body.c_str(), finalIpv6[0].str().c_str());
+            GLog::log() << "Request Network Find Ipv6 Url: " << url << "; \n - Resp: " << body << ";\n - Ipv6: " <<
+                    finalIpv6[0].str() << "; \n" << std::endl;
             return finalIpv6[0].str();
         }
-        std::cout << "No IPv6 address was matched in the request result" << std::endl;
+        GLog::log() << "No IPv6 address was matched in the request result" << std::endl;
         return "";
     } else
     {
-        std::cerr << "Request Network Find Ipv6 Url: " << url << "; Resp: " << resp.error() << std::endl;
+        GLog::log(GLog::LogLevelError) << "Request Network Find Ipv6 Url: " << url << "; Resp: " << resp.error() <<
+                std::endl;
     }
     return "";
 }

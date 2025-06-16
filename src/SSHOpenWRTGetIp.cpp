@@ -7,6 +7,7 @@
 #include "libssh2.h"
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include "GLog.h"
 
 SSHOpenWRTGetIp::SSHOpenWRTGetIp(const std::string &host,
                                  const std::string &user,
@@ -30,7 +31,7 @@ SSHOpenWRTGetIp::execRemoteCommand()
 {
     const auto [code , msg, ipv4, ipv6] = this->getRemoteIpv46();
     const auto type = code == 0 ? "IPV4&IPv6" : code == 1 ? "IPv4 Only" : code == 2 ? "IPv6 Only" : "Unknown";
-    std::cout << "Get IP from SSHOpenWRT: " << type << "; MSG: " << msg << "; IPv4: " << ipv4 << "; IPv6: " << ipv6 << std::endl;
+    GLog::log() << "Get IP from SSHOpenWRT: " << type << "; MSG: " << msg << "; IPv4: " << ipv4 << "; IPv6: " << ipv6 << std::endl;
     return std::make_tuple(code, msg, ipv4, ipv6);
 }
 
@@ -41,7 +42,7 @@ SSHOpenWRTGetIp::getRemoteIpv46()
 
     if (libssh2_init(0) != 0)
     {
-        std::cerr << "libssh2_init failed" << std::endl;
+        GLog::log(GLog::LogLevelError) << "libssh2_init failed" << std::endl;
         this->close();
         return std::make_tuple(-1, "libssh2_init failed", "", "");
     }
@@ -51,7 +52,7 @@ SSHOpenWRTGetIp::getRemoteIpv46()
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if (const int err = getaddrinfo(host.c_str(), nullptr, &hints, &res); err != 0)
     {
-        std::cerr << "getaddrinfo failed: " << gai_strerrorA(err) << std::endl;
+        GLog::log(GLog::LogLevelError) << "getaddrinfo failed: " << gai_strerrorA(err) << std::endl;
         this->close();
         return std::make_tuple(-1, ("getaddrinfo failed: " + std::string{gai_strerrorA(err)}), "", "");
     }
@@ -69,12 +70,12 @@ SSHOpenWRTGetIp::getRemoteIpv46()
             addr = &(ipv6->sin6_addr);
         }
         inet_ntop(p->ai_family, addr, ipstr, sizeof(ipstr));
-        std::cout << "SSH Host: " << host << "; IP: " << ipstr << std::endl;
+        GLog::log() << "SSH Host: " << host << "; IP: " << ipstr << std::endl;
     }
 
     if (addr == nullptr)
     {
-        std::cerr << "Unable to get IP address of AF_INET6" << std::endl;
+        GLog::log(GLog::LogLevelError) << "Unable to get IP address of AF_INET6" << std::endl;
         this->close();
         return std::make_tuple(-1, "Unable to get IP address of AF_INET6", "", "");
     }
@@ -84,7 +85,7 @@ SSHOpenWRTGetIp::getRemoteIpv46()
     sin.sin_addr = *static_cast<in_addr *>(addr);
     if (connect(sock, reinterpret_cast<sockaddr *>(&sin), sizeof(sin)) != 0)
     {
-        std::cerr << "Could not connect to host!" << std::endl;
+        GLog::log(GLog::LogLevelError) << "Could not connect to host!" << std::endl;
         this->close();
         return std::make_tuple(-1, "Could not connect to host!", "", "");
     }
@@ -92,7 +93,7 @@ SSHOpenWRTGetIp::getRemoteIpv46()
     session = libssh2_session_init();
     if (!session)
     {
-        std::cerr << "Could not initialize SSH session!\n" << std::endl;
+        GLog::log(GLog::LogLevelError) << "Could not initialize SSH session!\n" << std::endl;
         this->close();
         return std::make_tuple(-1, "Could not initialize SSH session!", "", "");
     }
@@ -115,7 +116,7 @@ SSHOpenWRTGetIp::getRemoteIpv46()
     channel = libssh2_channel_open_session(session);
     if (!channel)
     {
-        std::cerr << "Unable to open channel\n" << std::endl;
+        GLog::log(GLog::LogLevelError) << "Unable to open channel\n" << std::endl;
         this->close();
         return std::make_tuple(-1, "Unable to open channel\n", "", "");
     }
@@ -148,7 +149,7 @@ std::tuple<int32_t, std::string, std::string, std::string> SSHOpenWRTGetIp::read
         }
     } while (rc > 0);
 
-    std::cout << result << std::endl;
+    GLog::log() << result << std::endl;
 
 
     const auto [c6, ipv6] = this->getIpv6(result);
@@ -174,7 +175,7 @@ std::tuple<int32_t, std::string> SSHOpenWRTGetIp::getIpv4(const std::string &cmd
     auto pos = cmdResult.find(interfaceName);
     if (pos == std::string::npos)
     {
-        std::cerr << "Host not found" << std::endl;
+        GLog::log(GLog::LogLevelError) << "Host not found" << std::endl;
         return std::make_tuple(-1, "Host not found");
     }
 
@@ -183,7 +184,7 @@ std::tuple<int32_t, std::string> SSHOpenWRTGetIp::getIpv4(const std::string &cmd
     const auto endPos = subStr.find("peer");
     if (pos == std::string::npos || endPos == std::string::npos)
     {
-        std::cerr << "Host not found" << std::endl;
+        GLog::log(GLog::LogLevelError) << "Host not found" << std::endl;
         return std::make_tuple(-1, "Host not found");
     }
     pos += 5;
@@ -197,7 +198,7 @@ std::tuple<int32_t, std::string> SSHOpenWRTGetIp::getIpv6(const std::string &cmd
     auto pos = cmdResult.find(interfaceName);
     if (pos == std::string::npos)
     {
-        std::cerr << "Host not found" << std::endl;
+        GLog::log(GLog::LogLevelError) << "Host not found" << std::endl;
         return std::make_tuple(-1, "Host not found");
     }
 
@@ -206,7 +207,7 @@ std::tuple<int32_t, std::string> SSHOpenWRTGetIp::getIpv6(const std::string &cmd
 
     if (pos == std::string::npos)
     {
-        std::cerr << "Host not found" << std::endl;
+        GLog::log(GLog::LogLevelError) << "Host not found" << std::endl;
         return std::make_tuple(-1, "Host not found");
     }
     pos += 6;
@@ -215,7 +216,7 @@ std::tuple<int32_t, std::string> SSHOpenWRTGetIp::getIpv6(const std::string &cmd
     const auto endPos = subStr.find('/');
     if (endPos == std::string::npos)
     {
-        std::cerr << "Host not found" << std::endl;
+        GLog::log(GLog::LogLevelError) << "Host not found" << std::endl;
         return std::make_tuple(-1, "Host not found");
     }
     const auto ipv6 = subStr.substr(0, endPos);

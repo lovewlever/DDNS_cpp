@@ -35,7 +35,9 @@ if (WIN32)
             src/DDNSWorker.cpp
             include/DDNSWorker.h
             src/AliCloudReport.cpp
-            include/AliCloudReport.h)
+            include/AliCloudReport.h
+            src/GLog.cpp
+            include/GLog.h)
 
 
     add_executable(DDNS_cpp ${SOURCES})

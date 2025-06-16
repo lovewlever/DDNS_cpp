@@ -5,6 +5,7 @@
 #include "YamlConfig.h"
 
 #include <iostream>
+#include "GLog.h"
 
 const std::string YamlConfig::IpvConfTypeIpv4{"IPV4"};
 const std::string YamlConfig::IpvConfTypeIpv6{"IPV6"};
@@ -31,11 +32,11 @@ YamlConfig &YamlConfig::getInstance()
 
 int YamlConfig::loadConfig() const
 {
-    std::cout << "loadConfig..." << std::endl;
+    GLog::log() << "loadConfig..." << std::endl;
     const auto yaml = YAML::LoadFile("config/config.yaml");
     if (yaml.IsNull())
     {
-        std::cerr << "YAML::LoadFile failed!" << std::endl;
+        GLog::log(GLog::LogLevelError) << "YAML::LoadFile failed!" << std::endl;
         return -1;
     }
 
@@ -92,7 +93,7 @@ int YamlConfig::loadConfig() const
         config->ipvConfigs = ipvConfigs;
     } catch (const std::exception &e)
     {
-        std::cerr << e.what() << std::endl;
+        GLog::log(GLog::LogLevelError) << e.what() << std::endl;
         return -1;
     }
 

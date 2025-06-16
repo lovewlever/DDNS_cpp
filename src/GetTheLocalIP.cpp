@@ -5,14 +5,13 @@
 #include "GetTheLocalIP.h"
 
 #include <algorithm>
-#include <iostream>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <sstream>
 #include <vector>
 #include <iphlpapi.h>
 #include <array>
-#include <algorithm>
+#include "GLog.h"
 
 constexpr auto AddrTypeStrDhcp = "Dhcp";
 constexpr auto AddrTypeStrTemporary = "Temporary";
@@ -77,7 +76,7 @@ std::string GetTheLocalIP::getLocalIp6()
     // 初始化 Winsock
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-        printf("WSAStartup 失败: %d\n", WSAGetLastError());
+        GLog::log(GLog::LogLevelError) << "WSAStartup 失败: " << WSAGetLastError() << std::endl;
         return "1";
     }
 
@@ -85,7 +84,7 @@ std::string GetTheLocalIP::getLocalIp6()
     ULONG bufferSize = 0;
     DWORD result = GetAdaptersAddresses(AF_INET6, GAA_FLAG_INCLUDE_PREFIX, NULL, NULL, &bufferSize);
     if (result != ERROR_BUFFER_OVERFLOW) {
-        printf("GetAdaptersAddresses (查询缓冲区大小) 失败: %d\n", result);
+        GLog::log(GLog::LogLevelError) << "GetAdaptersAddresses (查询缓冲区大小) 失败: " << result << std::endl;
         WSACleanup();
         return "1";
     }
@@ -94,7 +93,7 @@ std::string GetTheLocalIP::getLocalIp6()
     PIP_ADAPTER_ADDRESSES adapters = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(buffer.data());
     result = GetAdaptersAddresses(AF_INET6, GAA_FLAG_INCLUDE_PREFIX, NULL, adapters, &bufferSize);
     if (result != ERROR_SUCCESS) {
-        printf("GetAdaptersAddresses 失败: %d\n", result);
+        GLog::log(GLog::LogLevelError) << "GetAdaptersAddresses 失败: " << result << std::endl;
         WSACleanup();
         return "1";
     }
@@ -152,10 +151,10 @@ std::string GetTheLocalIP::getLocalIp6()
     }
 
     if (!foundInterface) {
-        printf("未找到接口 26\n");
+        GLog::log(GLog::LogLevelError) << "未找到接口 26" << std::endl;
     }
 
     WSACleanup();
-    std::cout << "Find Machine Ipv6: " << finalIpv6Addr << std::endl;
+     GLog::log() << "Find Machine Ipv6: " << finalIpv6Addr << std::endl;
     return finalIpv6Addr;
 }

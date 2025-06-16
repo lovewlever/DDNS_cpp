@@ -10,6 +10,7 @@
 #include <openssl/buffer.h>
 
 #include "nlohmann/json.hpp"
+#include "GLog.h"
 
 std::string AliCloudReport::networkRequest(
     const std::string &accessKeySecret,
@@ -62,10 +63,10 @@ std::string AliCloudReport::networkRequest(
     try
     {
         const auto jsonObj = nlohmann::json::parse(b);
-        std::cerr << "HTTP request failed: " << jsonObj["Message"].get<std::string>() << std::endl;
+        GLog::log(GLog::LogLevelError) << "HTTP request failed: " << jsonObj["Message"].get<std::string>() << std::endl;
     } catch (const std::exception &e)
     {
-        std::cout << "HTTP request failed: " << e.what() << std::endl;
+        GLog::log() << "HTTP request failed: " << e.what() << std::endl;
     }
     return "";
 }
@@ -127,7 +128,7 @@ nlohmann::json AliCloudReport::getRecordDomainIp(
         return domainObj;
     } catch (const std::exception &e)
     {
-        std::cerr << "JSON parsing failed when querying SubDomain: " << e.what() << std::endl;
+        GLog::log(GLog::LogLevelError) << "JSON parsing failed when querying SubDomain: " << e.what() << std::endl;
         return {{"code", GetRecordDomainIpCodeERROR}};
     }
 }
@@ -159,20 +160,20 @@ void AliCloudReport::addOrUpdateDomain(const std::string &accessKey, const std::
                                        const std::string &subDomain, const std::string &domain,
                                        const std::string &ip, const std::string &type, const std::string &ttl) const
 {
-    std::cout << "Worker Add or Update SubDomain: " << subDomain << "." << domain << "..." << std::endl;
+    GLog::log() << "Worker Add or Update SubDomain: " << subDomain << "." << domain << "..." << std::endl;
     const auto findResult = this->getRecordDomainIp(accessKey, accessKeySecret, subDomain, domain);
     if (findResult["code"] == GetRecordDomainIpCodeAddDomain)
     {
-        std::cerr << "The cloud SubDomain may be empty, add this SubDomain: " << subDomain << "." << domain <<
+        GLog::log(GLog::LogLevelError) << "The cloud SubDomain may be empty, add this SubDomain: " << subDomain << "." << domain <<
                 std::endl;
         const auto i = this->addDomain(accessKey, accessKeySecret, subDomain, domain, ip, type, ttl);
         if (i == 0)
         {
-            std::cout << "Add " << subDomain << "." << domain << " successfully added" << std::endl;
-            std::cout << "Enjoy~ " << std::endl;
+            GLog::log() << "Add " << subDomain << "." << domain << " successfully added" << std::endl;
+            GLog::log() << "Enjoy~ " << std::endl;
         } else
         {
-            std::cout << "Failed to add SubDomain: " << subDomain << "." << domain << std::endl;
+            GLog::log() << "Failed to add SubDomain: " << subDomain << "." << domain << std::endl;
         }
     } else if (findResult["code"] == GetRecordDomainIpCodeUpdateDomain)
     {
@@ -180,19 +181,19 @@ void AliCloudReport::addOrUpdateDomain(const std::string &accessKey, const std::
         const auto recordId = findResult["RecordId"].get<std::string>();
         if (cloudIp == ip)
         {
-            std::cout << "The IP on the cloud is consistent with the IP to be updated, no update is required" <<
+            GLog::log() << "The IP on the cloud is consistent with the IP to be updated, no update is required" <<
                     std::endl;
             return;
         }
-        std::cout << "Update " << cloudIp << " to " << ip << " ..." << std::endl;
+        GLog::log() << "Update " << cloudIp << " to " << ip << " ..." << std::endl;
         const auto i = this->updateDomain(accessKey, accessKeySecret, subDomain, domain, ip, type, ttl, recordId);
         if (i == 0)
         {
-            std::cout << "Update " << subDomain << "." << domain << " successfully" << std::endl;
-            std::cout << "Enjoy~ " << std::endl;
+            GLog::log() << "Update " << subDomain << "." << domain << " successfully" << std::endl;
+            GLog::log() << "Enjoy~ " << std::endl;
         } else
         {
-            std::cout << "Failed to update SubDomain: " << subDomain << "." << domain << std::endl;
+            GLog::log() << "Failed to update SubDomain: " << subDomain << "." << domain << std::endl;
         }
     }
 }
@@ -237,13 +238,13 @@ int32_t AliCloudReport::addDomain(
         {
             return 0;
         }
-        std::cerr <<
+        GLog::log(GLog::LogLevelError) <<
                 "The cloud may not return data when adding SubDomain. Please check whether the addition is successful on the cloud."
                 << std::endl;
         return -1;
     } catch (const std::exception &e)
     {
-        std::cerr << "Add SubDomain failed: " << e.what() << std::endl;
+        GLog::log(GLog::LogLevelError) << "Add SubDomain failed: " << e.what() << std::endl;
         return -1;
     }
 }
@@ -291,13 +292,13 @@ int32_t AliCloudReport::updateDomain(const std::string &accessKey,
         {
             return 0;
         }
-        std::cerr <<
+        GLog::log(GLog::LogLevelError) <<
                 "When updating SubDomain, the cloud may not return data. Please check whether the update is successful in the cloud."
                 << std::endl;
         return -1;
     } catch (const std::exception &e)
     {
-        std::cerr << "Update SubDomain failed: " << e.what() << std::endl;
+        GLog::log(GLog::LogLevelError) << "Update SubDomain failed: " << e.what() << std::endl;
         return -1;
     }
 }
