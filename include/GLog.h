@@ -11,11 +11,13 @@ class GLog {
 private:
     static bool enable;
     static bool writeLogToFile;
+    static std::string logFileName;
     class NullStream final : public std::ostream {
     public:
         NullStream() : std::ostream(nullptr) {}
     };
     static inline NullStream s_nullStream{};
+    static inline std::unique_ptr<std::ostream> fileOstreamPtr{};
 public:
     GLog();
     ~GLog();
@@ -23,7 +25,7 @@ public:
     const static int32_t LogLevelError;
 
     static void setEnable(bool enable);
-    static void setWriteLogToFile(bool writeLogToFile);
+    static void setWriteLogToFile(const std::string &fileName);
 
     static std::ostream  & log(int32_t level = LogLevelInfo);
 

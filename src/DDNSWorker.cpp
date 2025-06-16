@@ -29,7 +29,8 @@ int32_t DDNSWorker::readConfig()
 
 [[noreturn]] void DDNSWorker::run() const
 {
-    GLog::setEnable(false);
+    GLog::setEnable(true);
+    GLog::setWriteLogToFile("log");
     int32_t count{0};
     const auto &yamlConfig = YamlConfig::getInstance();
     const auto &ipvs = yamlConfig.getIpvConfigs();
