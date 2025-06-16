@@ -29,18 +29,20 @@ int32_t DDNSWorker::readConfig()
 
 [[noreturn]] void DDNSWorker::run() const
 {
-    GLog::setEnable(true);
-    GLog::setWriteLogToFile("log");
     int32_t count{0};
     const auto &yamlConfig = YamlConfig::getInstance();
     const auto &ipvs = yamlConfig.getIpvConfigs();
     const auto &delayTime = yamlConfig.getDelayTimestamp();
     if (ipvs.size() == 0)
     {
-        GLog::log(GLog::LogLevelError) << "No IPvs found" << std::endl;
+        std::cerr << "No IPvs found" << std::endl;
         return;
     }
-    GLog::log() << "DDNSWorker::run()------------------" << std::endl;
+    std::cout << "DDNSWorker::run()------------------" << std::endl;
+
+    GLog::setEnable(true);
+    GLog::setWriteLogToFile("log");
+
     while (true)
     {
         std::cout << std::flush;

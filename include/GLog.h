@@ -16,7 +16,7 @@ private:
     public:
         NullStream() : std::ostream(nullptr) {}
     };
-    static inline NullStream s_nullStream{};
+    static inline NullStream nullStream{};
     static inline std::unique_ptr<std::ostream> fileOstreamPtr{};
 public:
     GLog();

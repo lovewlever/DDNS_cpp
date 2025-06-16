@@ -14,15 +14,9 @@ bool GLog::enable{false};
 bool GLog::writeLogToFile{true};
 std::string GLog::logFileName;
 
-GLog::GLog()
-{
+GLog::GLog() = default;
 
-}
-
-GLog::~GLog()
-{
-
-}
+GLog::~GLog() = default;
 
 void GLog::setEnable(const bool enable)
 {
@@ -44,13 +38,11 @@ void GLog::setWriteLogToFile(const std::string &path)
 
     if (!std::filesystem::exists(fileName))
     {
-
-        // 创建文件
         std::fstream fstream(fileName.c_str(), std::ios::out | std::ios::trunc);
         fstream.close();
     }
 
-    GLog::writeLogToFile = true;
+    writeLogToFile = true;
     auto stream = std::make_unique<std::ofstream>(fileName, std::ios::app);
     if (stream->is_open())
     {
@@ -70,7 +62,7 @@ std::ostream & GLog::log(const int32_t level)
     }
     if (!enable)
     {
-        return s_nullStream;
+        return nullStream;
     }
     if (writeLogToFile)
     {
