@@ -7,8 +7,12 @@
 
 #### Using:
  - 配置好```config.yaml```
- - 双击 ```DDns_cpp.exe```
+ - 双击 ```DDNS_cpp.exe```
  - Enjoy~
+
+#### 注册为Windows服务
+ - .\nssm.exe install DDNS_cpp
+ - .\nssm.exe start DDNS_cpp
 
 #### 配置文件 [config/config.yaml]
 
