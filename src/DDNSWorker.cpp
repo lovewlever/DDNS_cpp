@@ -35,15 +35,19 @@ int32_t DDNSWorker::readConfig()
     const auto &delayTime = yamlConfig.getDelayTimestamp();
     if (ipvs.size() == 0)
     {
+        GLog::log(GLog::LogLevelError) << "No IPvs found" << std::endl;
         std::cerr << "No IPvs found" << std::endl;
         return;
     }
+    GLog::log() << "DDNSWorker::run()====>>>>" << std::endl;
+    GLog::log() << "log write log/*.log" << std::endl;
+
     std::cout << "DDNSWorker::run()====>>>>" << std::endl;
     std::cout << "log write log/*.log" << std::endl;
-    GLog::setEnable(true);
+
     while (true)
     {
-        GLog::setWriteLogToFile("log");
+
         std::cout << std::flush;
         GLog::log() << "<<<<========================================================================>>>>" << std::endl;
         count++;

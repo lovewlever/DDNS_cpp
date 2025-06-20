@@ -36,6 +36,7 @@ int YamlConfig::loadConfig() const
     const auto yaml = YAML::LoadFile("config/config.yaml");
     if (yaml.IsNull())
     {
+        GLog::log(GLog::LogLevelError) << "YAML::LoadFile failed!" << std::endl;
         std::cerr << "YAML::LoadFile failed!" << std::endl;
         return -1;
     }

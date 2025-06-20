@@ -8,6 +8,11 @@ project(DDNS_cpp)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+message("IS_DEBUG: " ${CMAKE_BUILD_TYPE})
+message("IS_WIN32: " ${WIN32})
+message("IS_ANDROID: " ${ANDROID})
+message("IS_LINUX: " ${LINUX})
+
 if (WIN32)
     include_directories(include)
     link_directories(libs)

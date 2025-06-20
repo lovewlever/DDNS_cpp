@@ -8,12 +8,15 @@
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 int main()
 {
-    bool isTest{false};
+    GLog::setEnable(true);
+    GLog::setWriteLogToFile("log");
 
+    bool isTest{false};
     auto ddnsWorker = std::make_unique<DDNSWorker>();
     if (const auto i = ddnsWorker->readConfig(); i != 0)
     {
-        std::cout << "Press Enter to exit...";
+        GLog::log() << "Press Enter to exit..." << std::endl;
+        std::cout << "Press Enter to exit..." << std::endl;
         std::cin.ignore();
         return i;
     }
