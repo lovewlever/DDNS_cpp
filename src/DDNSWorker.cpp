@@ -47,8 +47,7 @@ int32_t DDNSWorker::readConfig()
 
     while (true)
     {
-
-        std::cout << std::flush;
+        GLog::setWriteLogToFile("log");
         GLog::log() << "<<<<========================================================================>>>>" << std::endl;
         count++;
         for (const auto &ipv: ipvs)
