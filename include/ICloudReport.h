@@ -5,7 +5,7 @@
 #ifndef ICLOUDREPORT_H
 #define ICLOUDREPORT_H
 
-#include <iostream>
+#include <memory>
 
 class ICloudReport
 {

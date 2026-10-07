@@ -1,0 +1,12 @@
+{
+    "clangd.arguments": [
+        "--compile-commands-dir=out/build/Ubuntu64",
+        "--clang-tidy",
+        "--header-insertion=iwyu",
+        "--background-index",           // 后台索引
+        "-j=4",                         // 4个并行线程
+        "--log=error",                  // 只显示错误日志
+        "--pch-storage=memory",         // PCH 存储在内存
+
+    ]
+}

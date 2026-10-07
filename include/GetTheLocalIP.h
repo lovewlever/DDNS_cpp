@@ -4,8 +4,10 @@
 
 #ifndef GETTHELOCALIP_H
 #define GETTHELOCALIP_H
+#ifdef WIN32
 #include <winsock2.h>
 #include <iphlpapi.h>
+#endif
 #include <string>
 
 class GetTheLocalIP

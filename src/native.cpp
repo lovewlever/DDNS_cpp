@@ -1,3 +1,5 @@
+#include <cstdlib>
+#include <cstring>
 #include <memory>
 #include "../include/SSHOpenWRTGetIp.h"
 #include "../include/nlohmann/json.hpp"
@@ -16,8 +18,8 @@ const char* getIpv46ByOpenWRT_SSH(const std::string &host,
     json["ipv4"] = ipv4;
     json["ipv6"] = ipv6;
     const auto cStr = json.dump().c_str();
-    const auto alloc = static_cast<char *>(CoTaskMemAlloc(strlen(cStr) + 1));
-    strcpy_s(alloc,strlen(cStr) + 1, cStr);
+    const auto alloc = static_cast<char *>(malloc(strlen(cStr) + 1));
+    strcpy(alloc, cStr);
     return alloc;
 }
 

@@ -1,7 +1,11 @@
 cmake_minimum_required(VERSION 3.30)
 
-#set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
-set(CMAKE_TOOLCHAIN_FILE "E:/SDK/vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+if(WIN32)
+        set(CMAKE_TOOLCHAIN_FILE "E:/SDK/vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake")
+endif()
 
 project(DDNS_cpp)
 
@@ -13,49 +17,82 @@ message("IS_WIN32: " ${WIN32})
 message("IS_ANDROID: " ${ANDROID})
 message("IS_LINUX: " ${LINUX})
 
-if (WIN32)
-    include_directories(include)
-    link_directories(libs)
+set(SOURCES main.cpp
+        src/SSHOpenWRTGetIp.cpp
+        include/SSHOpenWRTGetIp.h
+        src/native.cpp
+        src/GetTheLocalIP.cpp
+        include/GetTheLocalIP.h
+        src/YamlConfig.cpp
+        include/YamlConfig.h
+        src/NetworkRequest.cpp
+        include/NetworkRequest.h
+        src/DDNSWorker.cpp
+        include/DDNSWorker.h
+        src/AliCloudReport.cpp
+        include/AliCloudReport.h
+        src/GLog.cpp
+        include/GLog.h
+        src/ICloudReport.cpp
+        include/ICloudReport.h)
 
+if(WIN32)
+        include_directories(include)
+        link_directories(libs)
 
-    include(FetchContent)
+        include(FetchContent)
 
-    FetchContent_Declare(
-            yaml-cpp
-            GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-            GIT_TAG 0.8.0 # Can be a tag (yaml-cpp-x.x.x), a commit hash, or a branch name (master)
-    )
-    FetchContent_MakeAvailable(yaml-cpp)
+        FetchContent_Declare(
+                yaml-cpp
+                GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+                GIT_TAG 0.8.0 # Can be a tag (yaml-cpp-x.x.x), a commit hash, or a branch name (master)
+        )
+        FetchContent_MakeAvailable(yaml-cpp)
 
-    set(SOURCES main.cpp
-            src/SSHOpenWRTGetIp.cpp
-            include/SSHOpenWRTGetIp.h
-            src/native.cpp
-            src/GetTheLocalIP.cpp
-            include/GetTheLocalIP.h
-            src/YamlConfig.cpp
-            include/YamlConfig.h
-            src/NetworkRequest.cpp
-            include/NetworkRequest.h
-            src/DDNSWorker.cpp
-            include/DDNSWorker.h
-            src/AliCloudReport.cpp
-            include/AliCloudReport.h
-            src/GLog.cpp
-            include/GLog.h
-            src/ICloudReport.cpp
-            include/ICloudReport.h)
+        add_executable(DDNS_cpp ${SOURCES})
 
+        target_link_libraries(DDNS_cpp PRIVATE ws2_32 iphlpapi libssh2 libcrypto libssl)
+        target_link_libraries(DDNS_cpp PUBLIC yaml-cpp::yaml-cpp) # The library or executable that require yaml-cpp library
 
-    add_executable(DDNS_cpp ${SOURCES})
+        file(GLOB DATA_FILE ${CMAKE_CURRENT_SOURCE_DIR}/dll/*.dll)
+        file(COPY ${DATA_FILE}
+                DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
 
-    target_link_libraries(DDNS_cpp PRIVATE ws2_32 iphlpapi libssh2 libcrypto libssl)
-    target_link_libraries(DDNS_cpp PUBLIC yaml-cpp::yaml-cpp) # The library or executable that require yaml-cpp library
+        file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/config/config.yaml
+                DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/config/)
 
-    file(GLOB DATA_FILE ${CMAKE_CURRENT_SOURCE_DIR}/dll/*.dll)
-    file(COPY ${DATA_FILE}
-            DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/)
+elseif(LINUX)
+        message("current abi is linux")
 
-    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/config/config.yaml
-            DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/config/)
-endif ()
+        include(FetchContent)
+
+        FetchContent_Declare(
+                yaml-cpp
+                GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+                GIT_TAG 0.8.0 # Can be a tag (yaml-cpp-x.x.x), a commit hash, or a branch name (master)
+        )
+        FetchContent_MakeAvailable(yaml-cpp)
+
+        add_library(crypto STATIC IMPORTED)
+        set_target_properties(crypto PROPERTIES
+                IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/libs/ubuntu_libs/libcrypto.a")
+        add_library(ssh2 STATIC IMPORTED)
+        set_target_properties(ssh2 PROPERTIES
+                IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/libs/ubuntu_libs/libssh2.a")
+        add_library(ssl STATIC IMPORTED)
+        set_target_properties(ssl PROPERTIES
+                IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/libs/ubuntu_libs/libssl.a")
+        add_library(libz STATIC IMPORTED)
+        set_target_properties(libz PROPERTIES
+                IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/libs/ubuntu_libs/libz.a")
+
+        add_executable(DDNS_cpp ${SOURCES})
+
+        target_include_directories(DDNS_cpp PRIVATE include)
+
+        target_link_libraries(DDNS_cpp PRIVATE ssl crypto ssh2 libz)
+        target_link_libraries(DDNS_cpp PRIVATE yaml-cpp::yaml-cpp) # The library or executable that require yaml-cpp library
+
+        file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/config/config.yaml
+                DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/config/)
+endif()

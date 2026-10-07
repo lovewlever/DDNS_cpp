@@ -6,7 +6,9 @@
 #define SSHOPENWRTGETIP_H
 #include <iostream>
 #include <libssh2.h>
+#ifdef WIN32
 #include <winsock2.h>
+#endif
 
 /**
  * host,
@@ -16,50 +18,47 @@
  * command
  * interfaceName
  */
-class SSHOpenWRTGetIp
-{
+class SSHOpenWRTGetIp {
 private:
-     const std::string host;
-     const std::string user;
-     const std::string password;
-     const int32_t port = 22;
-     const std::string interfaceName;
-     const std::string command;
+  const std::string host;
+  const std::string user;
+  const std::string password;
+  const int32_t port = 22;
+  const std::string interfaceName;
+  const std::string command;
+#ifdef WIN32
+  WSADATA wsaData{};
 
-    WSADATA wsaData{};
+  addrinfo hints = {}, *res{nullptr};
+  void *addr{nullptr};
 
-    addrinfo hints = {}, *res{nullptr};
-    void* addr{nullptr};
+  libssh2_socket_t sock;
 
-    libssh2_socket_t sock;
-
-    sockaddr_in sin{};
-
-    LIBSSH2_SESSION * session{nullptr};
-    LIBSSH2_CHANNEL *channel{nullptr};
+  sockaddr_in sin{};
+#endif
+  LIBSSH2_SESSION *session{nullptr};
+  LIBSSH2_CHANNEL *channel{nullptr};
 
 public:
-    SSHOpenWRTGetIp(const std::string &host,
-                    const std::string &user,
-                    const std::string &password,
-                    const int32_t port = 22,
-                    const std::string &interfaceName = "pppoe-wan",
-                    const std::string &command = "ip addr");
+  SSHOpenWRTGetIp(const std::string &host, const std::string &user,
+                  const std::string &password, const int32_t port = 22,
+                  const std::string &interfaceName = "pppoe-wan",
+                  const std::string &command = "ip addr");
 
-    ~SSHOpenWRTGetIp() = default;
+  ~SSHOpenWRTGetIp() = default;
 
-    std::tuple<int32_t, std::string, std::string, std::string> execRemoteCommand();
+  std::tuple<int32_t, std::string, std::string, std::string>
+  execRemoteCommand();
 
 private:
-    std::tuple<int32_t, std::string, std::string, std::string> getRemoteIpv46();
+  std::tuple<int32_t, std::string, std::string, std::string> getRemoteIpv46();
 
-    std::tuple<int32_t, std::string, std::string, std::string> readRemoteIpv46();
+  std::tuple<int32_t, std::string, std::string, std::string> readRemoteIpv46();
 
-    std::tuple<int32_t, std::string> getIpv4(const std::string &cmdResult) const;
-    std::tuple<int32_t, std::string> getIpv6(const std::string &cmdResult) const;
+  std::tuple<int32_t, std::string> getIpv4(const std::string &cmdResult) const;
+  std::tuple<int32_t, std::string> getIpv6(const std::string &cmdResult) const;
 
-    void close();
+  void close();
 };
 
-
-#endif //SSHOPENWRTGETIP_H
+#endif // SSHOPENWRTGETIP_H

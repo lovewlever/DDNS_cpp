@@ -27,7 +27,7 @@ int32_t DDNSWorker::readConfig()
     return YamlConfig::getInstance().loadConfig();
 }
 
-[[noreturn]] void DDNSWorker::run() const
+void DDNSWorker::run() const
 {
     int32_t count{0};
     const auto &yamlConfig = YamlConfig::getInstance();
