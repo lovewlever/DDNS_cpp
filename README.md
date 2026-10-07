@@ -2,12 +2,13 @@
 ----
 
 #### C++实现的DDNS
- - 仅支持windows
+ - 支持windows/Linux(<span style="color:#ff0000">仅支持NETWORK Provider</span>)
  - 仅支持阿里云
 
 #### Using:
  - 配置好```config.yaml```
- - 双击 ```DDNS_cpp.exe```
+ - Windows双击 ```DDNS_cpp.exe```
+ - Linux ```sudo chmod +x DDNS_cpp``` and ```sudo ./DDNS_cpp```
  - Enjoy~
 
 #### 注册为Windows服务
