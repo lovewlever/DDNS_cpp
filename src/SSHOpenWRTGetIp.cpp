@@ -1,6 +1,10 @@
 #include "SSHOpenWRTGetIp.h"
 
 #include "libssh2.h"
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
 #ifdef WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -30,7 +34,7 @@ SSHOpenWRTGetIp::execRemoteCommand() {
                                 : "Unknown";
   GLog::log() << "Get IP from SSHOpenWRT: " << type << "; MSG: " << msg
               << "; IPv4: " << ipv4 << "; IPv6: " << ipv6 << std::endl;
-  this->close();
+  this->closeSSH();
   return std::make_tuple(code, msg, ipv4, ipv6);
 }
 
@@ -73,7 +77,7 @@ SSHOpenWRTGetIp::getRemoteIpv46() {
   if (addr == nullptr) {
     GLog::log(GLog::LogLevelError)
         << "Unable to get IP address of AF_INET6" << std::endl;
-    this->close();
+    this->closeSSH();
     return std::make_tuple(-1, "Unable to get IP address of AF_INET6", "", "");
   }
 
@@ -82,7 +86,7 @@ SSHOpenWRTGetIp::getRemoteIpv46() {
   sin.sin_addr = *static_cast<in_addr *>(addr);
   if (connect(sock, reinterpret_cast<sockaddr *>(&sin), sizeof(sin)) != 0) {
     GLog::log(GLog::LogLevelError) << "Could not connect to host!" << std::endl;
-    this->close();
+    this->closeSSH();
     return std::make_tuple(-1, "Could not connect to host!", "", "");
   }
 
@@ -90,26 +94,26 @@ SSHOpenWRTGetIp::getRemoteIpv46() {
   if (!session) {
     GLog::log(GLog::LogLevelError) << "Could not initialize SSH session!\n"
                                    << std::endl;
-    this->close();
+    this->closeSSH();
     return std::make_tuple(-1, "Could not initialize SSH session!", "", "");
   }
 
   if (libssh2_session_handshake(session, sock)) {
     fprintf(stderr, "Failure establishing SSH session\n");
-    this->close();
+    this->closeSSH();
     return std::make_tuple(-1, "Failure establishing SSH session\n", "", "");
   }
 
   if (libssh2_userauth_password(session, user.c_str(), password.c_str())) {
     fprintf(stderr, "Authentication failed!\n");
-    this->close();
+    this->closeSSH();
     return std::make_tuple(-1, "Authentication failed!", "", "");
   }
 
   channel = libssh2_channel_open_session(session);
   if (!channel) {
     GLog::log(GLog::LogLevelError) << "Unable to open channel\n" << std::endl;
-    this->close();
+    this->closeSSH();
     return std::make_tuple(-1, "Unable to open channel\n", "", "");
   }
 
@@ -117,14 +121,90 @@ SSHOpenWRTGetIp::getRemoteIpv46() {
   // return code 0: ALL, 1:ipv4, 2:ipv6
   return std::make_tuple(c, msg, ipv4, ipv6);
 
+#elifdef __linux__
+  if (libssh2_init(0) != 0) {
+    GLog::log(GLog::LogLevelError) << "libssh2_init failed" << std::endl;
+    this->closeSSH();
+    return std::make_tuple(-1, "libssh2_init failed", "", "");
+  }
+
+  sock = socket(AF_INET, SOCK_STREAM, 0);
+
+  if (const int err = getaddrinfo(host.c_str(), nullptr, &hints, &res);
+      err != 0) {
+    GLog::log(GLog::LogLevelError)
+        << "getaddrinfo failed: " << gai_strerror(err) << std::endl;
+    this->closeSSH();
+    return std::make_tuple(
+        -1, ("getaddrinfo failed: " + std::string{gai_strerror(err)}), "", "");
+  }
+
+  for (auto p = res; p != nullptr; p = p->ai_next) {
+    char ipstr[INET6_ADDRSTRLEN] = {};
+    if (p->ai_family == AF_INET) {
+      auto *ipv4 = reinterpret_cast<sockaddr_in *>(p->ai_addr);
+      addr = &(ipv4->sin_addr);
+    } else if (p->ai_family == AF_INET6) {
+      auto *ipv6 = reinterpret_cast<sockaddr_in6 *>(p->ai_addr);
+      addr = &(ipv6->sin6_addr);
+    }
+    inet_ntop(p->ai_family, addr, ipstr, sizeof(ipstr));
+    GLog::log() << "SSH Host: " << host << "; IP: " << ipstr << std::endl;
+  }
+
+  if (addr == nullptr) {
+    GLog::log(GLog::LogLevelError)
+        << "Unable to get IP address of AF_INET6" << std::endl;
+    this->closeSSH();
+    return std::make_tuple(-1, "Unable to get IP address of AF_INET6", "", "");
+  }
+
+  sockaddr_in addr{};
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(port);
+  addr.sin_addr.s_addr = inet_addr(host.c_str());
+  if (connect(sock, (struct sockaddr *)(&addr), sizeof(sockaddr_in)) != 0) {
+    return std::make_tuple(-1, "TCP 连接目标主机失败\n", "", "");
+  }
+
+  session = libssh2_session_init();
+  if (!session) {
+    closeSSH();
+    return std::make_tuple(-1, "创建 SSH 会话失败\n", "", "");
+  }
+
+  // 设置为阻塞模式（简化逻辑）
+  libssh2_session_set_blocking(session, 1);
+  if (libssh2_session_handshake(session, sock)) {
+    fprintf(stderr, "Failure establishing SSH session\n");
+    this->closeSSH();
+    return std::make_tuple(-1, "Failure establishing SSH session\n", "", "");
+  }
+
+  if (libssh2_userauth_password(session, user.c_str(), password.c_str())) {
+    fprintf(stderr, "Authentication failed!\n");
+    this->closeSSH();
+    return std::make_tuple(-1, "Authentication failed!", "", "");
+  }
+
+  channel = libssh2_channel_open_session(session);
+  if (!channel) {
+    GLog::log(GLog::LogLevelError) << "Unable to open channel\n" << std::endl;
+    this->closeSSH();
+    return std::make_tuple(-1, "Unable to open channel\n", "", "");
+  }
+
+  const auto [c, msg, ipv4, ipv6] = this->readRemoteIpv46();
+  return std::make_tuple(c, msg, ipv4, ipv6);
 #endif
+
   return {};
 }
 
 std::tuple<int32_t, std::string, std::string, std::string>
 SSHOpenWRTGetIp::readRemoteIpv46() {
   if (libssh2_channel_exec(channel, command.c_str())) {
-    this->close();
+    this->closeSSH();
     return std::make_tuple(-1, "Unable to execute command\n", "", "");
   }
 
@@ -205,8 +285,8 @@ SSHOpenWRTGetIp::getIpv6(const std::string &cmdResult) const {
   return std::make_tuple(0, ipv6);
 }
 
-void SSHOpenWRTGetIp::close() {
-#ifdef WIN32
+void SSHOpenWRTGetIp::closeSSH() {
+
   if (channel != nullptr) {
     libssh2_channel_close(channel);
     libssh2_channel_free(channel);
@@ -219,9 +299,13 @@ void SSHOpenWRTGetIp::close() {
     session = nullptr;
   }
 
-  if (sock != INVALID_SOCKET) {
+  if (sock != -1) {
+#ifdef WIN32
     closesocket(sock);
-    sock = INVALID_SOCKET;
+#elifdef __linux__
+    close(sock);
+#endif
+    sock = -1;
   }
 
   if (res) {
@@ -230,7 +314,7 @@ void SSHOpenWRTGetIp::close() {
   }
 
   libssh2_exit();
-
+#ifdef WIN32
   WSACleanup();
 #endif
 }

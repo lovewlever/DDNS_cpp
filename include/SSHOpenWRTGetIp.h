@@ -6,6 +6,10 @@
 #define SSHOPENWRTGETIP_H
 #include <iostream>
 #include <libssh2.h>
+#ifdef __linux__
+#include <netdb.h>
+#include <netinet/in.h>
+#endif
 #ifdef WIN32
 #include <winsock2.h>
 #endif
@@ -28,14 +32,14 @@ private:
   const std::string command;
 #ifdef WIN32
   WSADATA wsaData{};
-
+#endif
   addrinfo hints = {}, *res{nullptr};
   void *addr{nullptr};
 
   libssh2_socket_t sock;
 
   sockaddr_in sin{};
-#endif
+
   LIBSSH2_SESSION *session{nullptr};
   LIBSSH2_CHANNEL *channel{nullptr};
 
@@ -58,7 +62,7 @@ private:
   std::tuple<int32_t, std::string> getIpv4(const std::string &cmdResult) const;
   std::tuple<int32_t, std::string> getIpv6(const std::string &cmdResult) const;
 
-  void close();
+  void closeSSH();
 };
 
 #endif // SSHOPENWRTGETIP_H
