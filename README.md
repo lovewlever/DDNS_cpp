@@ -2,7 +2,7 @@
 ----
 
 #### C++实现的DDNS
- - 支持windows/Linux(<span style="color:#ff0000">仅支持NETWORK Provider</span>)
+ - 支持windows/Linux(<span style="color:#ff0000">不支持MACHINE Provider</span>)
  - 仅支持阿里云
 
 #### Using:
