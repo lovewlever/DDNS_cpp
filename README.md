@@ -11,9 +11,8 @@
  - Linux ```sudo chmod +x DDNS_cpp``` and ```sudo ./DDNS_cpp```
  - Enjoy~
 
-#### 注册为Windows服务
- - .\nssm.exe install DDNS_cpp
- - .\nssm.exe start DDNS_cpp
+#### 开机启动
+ - 建议使用pm2管理
 
 #### 配置文件 [config/config.yaml]
 
