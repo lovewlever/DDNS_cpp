@@ -3,6 +3,7 @@
 #include "GetTheLocalIP.h"
 #include "GLog.h"
 #include "SSHOpenWRTGetIp.h"
+#include <memory>
 
 // TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
 // click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
@@ -10,6 +11,14 @@ int main()
 {
     GLog::setEnable(true);
     GLog::setWriteLogToFile("log");
+
+    // 测试================================================================
+    // {
+    //     const auto UP_GetTheLocalIp = std::make_unique<GetTheLocalIP>();
+    //     UP_GetTheLocalIp->getLocalIp6();
+    // }
+    // return 0;
+    // 测试================================================================
 
     bool isTest{false};
     auto ddnsWorker = std::make_unique<DDNSWorker>();

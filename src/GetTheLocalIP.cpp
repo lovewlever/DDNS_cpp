@@ -5,10 +5,17 @@
 #include "GetTheLocalIP.h"
 
 #include <algorithm>
+#include <string>
 #ifdef WIN32
 #include <iphlpapi.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#elifdef __linux__
+#include <ifaddrs.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <net/if.h>
 #endif
 #include <sstream>
 #include <vector>
@@ -170,7 +177,60 @@ std::string GetTheLocalIP::getLocalIp6() {
   WSACleanup();
   GLog::log() << "Find Machine Ipv6: " << finalIpv6Addr << std::endl;
   return finalIpv6Addr;
+#elifdef __linux__
 
+  std::vector<Ipv6XX> ip_list;
+  struct ifaddrs *ifaddr{nullptr};
+
+  if (getifaddrs(&ifaddr) == -1) {
+    GLog::log(GLog::LogLevelError) << "Find Machine Ipv6: " << "fail!" << std::endl;
+    return {};
+  }
+
+  for (struct ifaddrs* ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
+        if (!ifa->ifa_addr) {
+            continue;
+        }
+
+        // 检查网卡是否处于运行激活状态 (UP)
+        if (!(ifa->ifa_flags & IFF_UP)) {
+            continue;
+        }
+
+        // 过滤回环接口 (lo)
+        if (std::string{ifa->ifa_name} == "lo") {
+            continue;
+        }
+
+        int family = ifa->ifa_addr->sa_family;
+
+        // 处理 IPv4
+        /* if (family == AF_INET) {
+            char ip_str[INET_ADDRSTRLEN];
+            auto* sa = reinterpret_cast<struct sockaddr_in*>(ifa->ifa_addr);
+            if (inet_ntop(AF_INET, &(sa->sin_addr), ip_str, INET_ADDRSTRLEN)) {
+                ip_list.push_back({ifa->ifa_name, std::string(ip_str)});
+            }
+        }
+        // 处理 IPv6（如不需要可注释此分支）
+        else  */if (family == AF_INET6) {
+            char ip_str[INET6_ADDRSTRLEN];
+            auto* sa6 = reinterpret_cast<struct sockaddr_in6*>(ifa->ifa_addr);
+            if (inet_ntop(AF_INET6, &(sa6->sin6_addr), ip_str, INET6_ADDRSTRLEN)) {
+                ip_list.push_back({ifa->ifa_name, std::string(ip_str)});
+            }
+        }
+    }
+
+    freeifaddrs(ifaddr);
+    if (ip_list.empty()) {
+      return {};
+    } else {
+      return ip_list[0].ip;
+    }
+    
 #endif
+
+
   return {};
 }
